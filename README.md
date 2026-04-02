@@ -32,22 +32,32 @@
 
 ### 1. 单周期 CPU
 
-单周期 CPU 的特点是在一个时钟周期内执行完一条指令。它包含了取指模块 (`Fetch`)、算术逻辑单元 (`ALU`)、寄存器组 (`Registers`)、数据存储器 (`DataMem`)、控制单元 (`CU`) 等核心部件，通过数据通路连接而成。
+单周期 CPU 的特点是在一个时钟周期内执行完一条指令。它包含了取指模块 (`Fetch`)、算术逻辑单元 (`ALU`)、寄存器组 (`Registers`)、数据存储器 (`DataMem`)、控制单元 (`CU`) 等核心部件，通过数据通路连接而成。下图是本项目实现的单周期CPU架构：
+<img width="819" height="434" alt="单周期" src="https://github.com/user-attachments/assets/1b9362e3-f1cd-4bef-b9ad-2700e019158f" />
+
 
 ### 2. 5 级流水线 CPU
 
-流水线 CPU 将每条指令的执行过程划分为 5 个阶段（取指 IF、译码 ID、执行 EXE、访存 MEM、写回 WB），通过在各个阶段间添加流水线寄存器 (`IF_ID`, `ID_EXE`, `EXE_MEM`, `MEM_WB`) 来实现指令的并行执行。
+流水线 CPU 将每条指令的执行过程划分为 5 个阶段（取指 IF、译码 ID、执行 EXE、访存 MEM、写回 WB），通过在各个阶段间添加流水线寄存器 (`IF_ID`, `ID_EXE`, `EXE_MEM`, `MEM_WB`) 来实现指令的并行执行。下图是本项目实现的五级流水线CPU架构：
+<img width="747" height="358" alt="流水线" src="https://github.com/user-attachments/assets/1f25e8f1-a2cb-4513-b10c-198b577d57e5" />
+
 
 #### 冒险解决方案
 
 * **数据冒险：** 采用**数据前推（转发）+ 暂停（Stall）** 的方法。
     * **转发机制：** 在 EXE 级通过多路选择器，将 MEM 阶段 (`MEM_Result`) 或 WB 阶段 (`WB_BusW`) 的结果直接前推给 ALU 作为操作数，避免了大部分的数据相关停顿。
     * **暂停机制（Stall）：** 专门用于处理 `lw` 指令引发的 load-use 数据冒险。当检测到后续指令需要使用 `lw` 指令加载的数据时，生成 stall 信号，暂停 IF 和 ID 阶段的寄存器更新，从而在流水线中插入一个“气泡”（Bubble）等待数据准备就绪。
+    * 下图是本项目实现的解决数据冒险的5级流水线CPU架构：
+      <img width="811" height="377" alt="数据冒险" src="https://github.com/user-attachments/assets/9c3211e8-0922-4bb2-9188-5dce519f1f92" />
+
 * **控制冒险：**
     * 将分支指令 (`beq`) 的条件判断 (`Branch` 信号) 和目标地址 (`bpc`) 的计算调整到 **EXE 级** 进行。
     * 将跳转指令 (`j`) 的目标地址 (`jpc`) 计算调整到 **ID 级** 进行。
     * 如果分支成立，系统会生成控制信号，废除（Flush）其后已经进入 IF 级和 ID 级的两条无效指令，替换为 `NOP` (空指令)。
     * 如果发生跳转，则废除其后已经进入 IF 级的指令。
+    * 下图是本项目实现的实现的解决两种冒险的5级流水线CPU架构：
+      <img width="875" height="403" alt="控制冒险" src="https://github.com/user-attachments/assets/eb6ef8e0-1cf9-4ecd-8b69-58ccce82d5fb" />
+
 
 ## 核心模块说明
 
